@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#145b45">
+  <meta name="description" content="المسمّع الذكي: مساعد لتسميع المتون العلمية ومراجعة أخطاء الحفظ.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <title>المسمّع الذكي | Smart Mosamie</title>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#home" aria-label="الرئيسية">
+      <span class="brand-mark">م</span>
+      <span><strong>المسمّع الذكي</strong><small>SMART MOSAMIE</small></span>
+    </a>
+    <button id="themeBtn" class="icon-btn" type="button" aria-label="تغيير المظهر" title="تغيير المظهر">◐</button>
+  </header>
+
+  <main>
+    <section id="homeView" class="view active">
+      <div class="hero">
+        <div class="eyebrow"><span class="live-dot"></span> رفيقك في تثبيت العلم</div>
+        <h1>سمّع محفوظاتك،<br><span>وثبّت علمك.</span></h1>
+        <p>تدرّب على المتون العلمية، تابع قراءتك، واكتشف مواضع تحتاج إلى مراجعة.</p>
+        <button id="startBtn" class="primary-btn" type="button">ابدأ التسميع <span>←</span></button>
+        <div class="hero-note"><span>◉</span> تعمل النسخة التجريبية على جهازك لحفظ المتون والتقدم محلياً.</div>
+      </div>
+      <div class="section-heading"><div><h2>مكتبة المتون</h2><p>اختر متناً للبدء أو أضف متناً خاصاً بك.</p></div><span class="count-pill" id="matnCount">١ متن</span></div>
+      <div id="matnGrid" class="matn-grid"></div>
+      <button id="addMatnBtn" class="secondary-btn full-btn" type="button">＋ إضافة متن جديد</button>
+      <div class="privacy-card"><span class="privacy-icon">◇</span><div><strong>خصوصيتك مهمة</strong><p>المتون التي تضيفها تحفظ في متصفح هذا الجهاز. ميزة الصوت تستخدم خدمة المتصفح عند توفرها.</p></div></div>
+    </section>
+
+    <section id="setupView" class="view">
+      <button class="back-btn" data-go="home" type="button">→ الرئيسية</button>
+      <div class="page-title"><span class="eyebrow">جلسة جديدة</span><h1>جهّز تسميعك</h1><p>اختر الأبيات التي تريد استظهارها.</p></div>
+      <div class="panel">
+        <label for="matnSelect">المتن</label><select id="matnSelect"></select>
+        <div class="form-row"><div><label for="fromLine">من البيت</label><input id="fromLine" type="number" min="1" value="1"></div><div><label for="toLine">إلى البيت</label><input id="toLine" type="number" min="1" value="5"></div></div>
+        <div class="option-card"><div><strong>إظهار النص أثناء التسميع</strong><small>يمكنك إخفاؤه لاختبار الحفظ.</small></div><label class="switch"><input id="showTextToggle" type="checkbox" checked><span></span></label></div>
+        <div class="option-card"><div><strong>التنبيه عند الخطأ المحتمل</strong><small>قد تتأثر الدقة بالتعرف الصوتي.</small></div><label class="switch"><input id="alertsToggle" type="checkbox" checked><span></span></label></div>
+        <button id="beginSessionBtn" class="primary-btn full-btn" type="button">فتح جلسة التسميع <span>←</span></button>
+      </div>
+    </section>
+
+    <section id="sessionView" class="view">
+      <button class="back-btn" data-go="setup" type="button">→ إعداد الجلسة</button>
+      <div class="session-head"><div><span class="eyebrow">جلسة التسميع</span><h1 id="sessionMatnName">المنظومة البيقونية</h1><p id="sessionRange">الأبيات المحددة</p></div><span id="sessionStatus" class="status-pill">جاهز</span></div>
+      <div class="session-stats"><div><strong id="readCount">٠</strong><span>كلمات مرصودة</span></div><div><strong id="errorCount">٠</strong><span>أخطاء محتملة</span></div><div><strong id="elapsedTime">٠:٠٠</strong><span>الوقت</span></div></div>
+      <div class="panel recitation-panel">
+        <div class="text-panel-head"><strong>النص المرجعي</strong><button id="toggleTextBtn" class="text-btn" type="button">إخفاء النص</button></div>
+        <div id="referenceText" class="reference-text"></div>
+        <div id="hiddenTextMessage" class="hidden-message" hidden>النص مخفي — حاول التسميع من حفظك.</div>
+        <div class="mic-area">
+          <button id="micBtn" class="mic-btn" type="button" aria-label="بدء التسميع"><span class="mic-symbol">🎙</span><span id="micBtnLabel">ابدأ الاستماع</span></button>
+          <p id="micHelp" class="mic-help">اضغط للبدء. اسمح للمتصفح باستخدام الميكروفون عند الطلب.</p>
+        </div>
+        <div class="recognized-box"><div class="recognized-title"><strong>ما التقطه التطبيق</strong><span id="recognitionBadge" class="muted-badge">بانتظار الصوت</span></div><p id="recognizedText">سيظهر النص الذي يتعرف عليه المتصفح هنا.</p></div>
+        <div id="feedbackBox" class="feedback-box neutral"><span id="feedbackIcon">ⓘ</span><p id="feedbackText">ابدأ التسميع، وسنحاول مطابقة الكلمات مع النص المرجعي.</p></div>
+        <div class="session-actions"><button id="hintBtn" class="secondary-btn" type="button">أظهر الكلمة التالية</button><button id="finishBtn" class="primary-btn" type="button">إنهاء الجلسة</button></div>
+      </div>
+    </section>
+
+    <section id="reportView" class="view">
+      <div class="report-hero"><div class="report-check">✓</div><span class="eyebrow">انتهت الجلسة</span><h1>أحسنت المحاولة</h1><p>راجع الملخص أدناه وحدد ما يحتاج إلى مزيد من الحفظ.</p></div>
+      <div class="report-grid"><div class="report-card"><span>الكلمات المرصودة</span><strong id="reportWords">٠</strong></div><div class="report-card"><span>أخطاء محتملة</span><strong id="reportErrors">٠</strong></div><div class="report-card"><span>مدة الجلسة</span><strong id="reportDuration">٠:٠٠</strong></div></div>
+      <div class="panel"><h2>النص الذي تم التعرف عليه</h2><p id="reportTranscript" class="report-transcript">لم يُلتقط نص.</p><h2 class="mt">ملاحظات</h2><ul id="reportNotes" class="report-notes"></ul><button id="retryBtn" class="primary-btn full-btn" type="button">إعادة التسميع</button><button id="homeFromReportBtn" class="secondary-btn full-btn" type="button">العودة إلى المكتبة</button></div>
+    </section>
+
+    <section id="addMatnView" class="view">
+      <button class="back-btn" data-go="home" type="button">→ الرئيسية</button>
+      <div class="page-title"><span class="eyebrow">مكتبتك الخاصة</span><h1>إضافة متن</h1><p>ألصق النص وقسّمه إلى أبيات أو أسطر. كل سطر سيعامل كوحدة تسميع.</p></div>
+      <form id="addMatnForm" class="panel">
+        <label for="newMatnName">اسم المتن</label><input id="newMatnName" required maxlength="100" placeholder="مثال: متن في النحو">
+        <label for="newMatnType">نوع المتن</label><select id="newMatnType"><option value="منظومة">منظومة</option><option value="نثر">نثر</option><option value="أخرى">أخرى</option></select>
+        <label for="newMatnText">النص</label><textarea id="newMatnText" required rows="8" placeholder="اكتب كل بيت أو فقرة في سطر مستقل..."></textarea>
+        <p class="field-hint">أضف فقط نصاً تملك حق استخدامه أو يسمح ترخيصه بذلك.</p>
+        <button class="primary-btn full-btn" type="submit">حفظ المتن على هذا الجهاز</button>
+      </form>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="التنقل الرئيسي"><button class="nav-item active" data-nav="home" type="button"><span>⌂</span><small>الرئيسية</small></button><button class="nav-item" data-nav="setup" type="button"><span>🎙</span><small>التسميع</small></button><button class="nav-item" data-nav="addMatn" type="button"><span>＋</span><small>إضافة متن</small></button></nav>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
