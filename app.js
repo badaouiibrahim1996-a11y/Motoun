@@ -50,10 +50,49 @@ function renderReference(){const box=$('referenceText');box.innerHTML=sessionLin
 function updateTimer(){if(!startedAt)return;const s=Math.floor((Date.now()-startedAt)/1000);$('elapsedTime').textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
 function setFeedback(type,icon,text){$('feedbackBox').className=`feedback-box ${type}`;$('feedbackIcon').textContent=icon;$('feedbackText').textContent=text}
 function setMicState(listening){isListening=listening;$('micBtn').classList.toggle('listening',listening);$('micBtnLabel').textContent=listening?'إيقاف الاستماع':'ابدأ الاستماع';$('sessionStatus').textContent=listening?'يستمع':'متوقف';$('micBtn').setAttribute('aria-label',listening?'إيقاف التسميع':'بدء التسميع')}
-function initRecognition(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){setFeedback('warn','!','المتصفح الحالي لا يوفّر واجهة التعرف على الكلام. جرّب أحدث إصدار من Chrome على Android.');$('micHelp').textContent='التعرف الصوتي غير مدعوم في هذا المتصفح.';return null}const r=new SR();r.lang='ar-SA';r.continuous=true;r.interimResults=true;r.maxAlternatives=1;r.onstart=()=>{setMicState(true);if(!startedAt){startedAt=Date.now();elapsedTimer=setInterval(updateTimer,500)}setFeedback('neutral','◉','نستمع الآن. قد يظهر التنبيه بعد أن ينهي المتصفح التعرّف على الكلمة.')};r.onresult=e=>{let finals=[];let interim=[];for(let i=0;i<e.results.length;i++){const result=e.results[i];const txt=(result[0]?.transcript||'').trim();if(!txt)continue;if(result.isFinal)finals.push(txt);else interim.push(txt)}
-// Rebuild from the browser's current result list instead of appending each event; this prevents duplicated phrases.
-finalTranscript=finals.join(' ').trim();interimTranscript=interim.join(' ').trim();const shown=[finalTranscript,interimTranscript].filter(Boolean).join(' ');$('recognizedText').textContent=shown||'لم يتم التعرف على كلمات بعد.';$('recognitionBadge').textContent=interimTranscript?'يعالج الكلام…':'تم تحديث النص';processRecognition(finalTranscript)};r.onerror=e=>{const messages={'not-allowed':'لم يُسمح للميكروفون. افتح إعدادات الموقع واسمح باستخدامه.','audio-capture':'لم يتم العثور على ميكروفون متاح.','network':'خدمة التعرف الصوتي تحتاج إلى اتصال أو تعذر الوصول إليها.','no-speech':'لم نلتقط كلاماً. حاول الاقتراب من الميكروفون.'};setFeedback('warn','!',messages[e.error]||`تعذر التعرف على الصوت (${e.error}).`);if(e.error==='not-allowed'||e.error==='audio-capture')setMicState(false)};r.onend=()=>{setMicState(false);if(!sessionFinished&&startedAt){$('micHelp').textContent='توقف الاستماع. اضغط «ابدأ الاستماع» للمتابعة.'}};return r}
-function playErrorAlert(){try{if(navigator.vibrate)navigator.vibrate([120,70,120]);const AudioCtx=window.AudioContext||window.webkitAudioContext;if(!AudioCtx)return;const ctx=new AudioCtx();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.type='sine';osc.frequency.value=880;gain.gain.setValueAtTime(0.0001,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(0.12,ctx.currentTime+0.02);gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.22);osc.connect(gain);gain.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+0.24);osc.onended=()=>ctx.close().catch(()=>{})}catch{}}
+function initRecognition(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){setFeedback('warn','!','المتصفح الحالي لا يوفّر واجهة التعرف على الكلام. جرّب أحدث إصدار من Chrome على Android.');$('micHelp').textContent='التعرف الصوتي غير مدعوم في هذا المتصفح.';return null}
+  const r=new SR();
+  r.lang='ar-SA';r.continuous=true;r.interimResults=true;r.maxAlternatives=1;
+  r.onstart=()=>{setMicState(true);if(!startedAt){startedAt=Date.now();elapsedTimer=setInterval(updateTimer,500)}setFeedback('neutral','◉','نستمع الآن. سيُفحص الكلام بعد تأكيده من المتصفح.')};
+  r.onresult=e=>{
+    // Build transcript from the current result list. Final results are treated separately from interim hypotheses.
+    const finals=[];const interim=[];
+    for(let i=0;i<e.results.length;i++){
+      const result=e.results[i];const txt=(result[0]?.transcript||'').trim();if(!txt)continue;
+      (result.isFinal?finals:interim).push(txt);
+    }
+    finalTranscript=dedupeSpeechChunks(finals).join(' ').trim();
+    interimTranscript=dedupeSpeechChunks(interim).join(' ').trim();
+    const shown=[finalTranscript,interimTranscript].filter(Boolean).join(' ');
+    $('recognizedText').textContent=shown||'لم يتم التعرف على كلمات بعد.';
+    $('recognitionBadge').textContent=interimTranscript?'يعالج الكلام…':'تم تحديث النص';
+    // Do not sound an error for unstable interim hypotheses. If no final words yet, show a waiting state.
+    if(finalTranscript) processRecognition(finalTranscript);
+  };
+  r.onerror=e=>{const messages={'not-allowed':'لم يُسمح للميكروفون. افتح إعدادات الموقع واسمح باستخدامه.','audio-capture':'لم يتم العثور على ميكروفون متاح.','network':'خدمة التعرف الصوتي تحتاج إلى اتصال أو تعذر الوصول إليها.','no-speech':'لم نلتقط كلاماً. حاول الاقتراب من الميكروفون.'};setFeedback('warn','!',messages[e.error]||`تعذر التعرف على الصوت (${e.error}).`);if(e.error==='not-allowed'||e.error==='audio-capture')setMicState(false)};
+  r.onend=()=>{setMicState(false);if(!sessionFinished&&startedAt){$('micHelp').textContent='توقف الاستماع. اضغط «ابدأ الاستماع» للمتابعة.'}};
+  return r;
+}
+// Some browser engines may return repeated/overlapping chunks. Remove exact consecutive repeats conservatively.
+function dedupeSpeechChunks(chunks){
+  const out=[];
+  for(const raw of chunks){
+    const chunk=String(raw||'').trim();if(!chunk)continue;
+    const norm=normalizeArabic(chunk);
+    if(!norm)continue;
+    const previous=out.length?normalizeArabic(out[out.length-1]):'';
+    if(norm===previous)continue;
+    // If a new chunk contains the previous chunk at its beginning, keep only the new extension.
+    if(previous && norm.startsWith(previous+' ')){out[out.length-1]=chunk;continue;}
+    // If the previous chunk already ends with this chunk, do not append it again.
+    if(previous && (previous===norm || previous.endsWith(' '+norm)))continue;
+    out.push(chunk);
+  }
+  return out;
+}
+function playErrorAlert(){try{if(navigator.vibrate)navigator.vibrate([120,70,120]);const AudioCtx=window.AudioContext||window.webkitAudioContext;if(!AudioCtx)return;const ctx=new AudioCtx();if(ctx.state==='suspended')ctx.resume().catch(()=>{});const osc=ctx.createOscillator();const gain=ctx.createGain();osc.type='sine';osc.frequency.value=880;gain.gain.setValueAtTime(0.0001,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(0.12,ctx.currentTime+0.02);gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.22);osc.connect(gain);gain.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+0.24);osc.onended=()=>ctx.close().catch(()=>{})}catch{}}
 function processRecognition(text){const heard=tokenize(text);$('readCount').textContent=String(heard.length);if(!heard.length)return;const alignment=alignTokens(expectedTokens,heard);errorWords=alignment.errors;matchedTokens=alignment.matches;$('errorCount').textContent=String(errorWords.length);paintReference(alignment);if(errorWords.length&&$('alertsToggle').checked){const first=errorWords[0];const signature=`${first.index}:${first.kind}:${first.word}:${first.expected||''}`;setFeedback('warn','!','اختلاف محتمل: راجع «'+first.word+'»'+(first.expected?'؛ المتوقع «'+first.expected+'»':'')+'. قد يكون الخطأ من التعرّف الصوتي نفسه.');if(signature!==lastAlertSignature){playErrorAlert();lastAlertSignature=signature}}else if(alignment.matches.length){lastAlertSignature='';setFeedback('good','✓','تمت مطابقة بعض الكلمات. استمر في التسميع، وتحقق من النص قبل اعتماد النتيجة.')} }
 // Lightweight ordered comparison. This is a heuristic, not a phonetic/linguistic alignment model.
 function alignTokens(expected,heard,finalize=false){const matches=[],errors=[];let i=0,j=0;while(i<expected.length&&j<heard.length){if(expected[i]===heard[j]){matches.push(i);i++;j++;continue}if(i+1<expected.length&&expected[i+1]===heard[j]){errors.push({index:i,word:expected[i],kind:'missing'});i++;continue}if(j+1<heard.length&&expected[i]===heard[j+1]){errors.push({index:i,word:heard[j],kind:'extra'});j++;continue}errors.push({index:i,word:heard[j],expected:expected[i],kind:'different'});i++;j++}if(finalize){while(i<expected.length&&errors.length<20){errors.push({index:i,word:expected[i],kind:'not-heard'});i++}}return{matches,errors}}
